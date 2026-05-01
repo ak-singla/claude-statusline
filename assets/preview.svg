@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="160" viewBox="0 0 980 160" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="13">
+  <defs>
+    <style>
+      .bg { fill: #1e1e1e; }
+      .chrome { fill: #2a2a2a; }
+      .dot-r { fill: #ff5f56; }
+      .dot-y { fill: #ffbd2e; }
+      .dot-g { fill: #27c93f; }
+      .fg { fill: #e6e6e6; }
+      .dim { fill: #888888; }
+      .green { fill: #98c379; }
+      .yellow { fill: #e5c07b; }
+      .red { fill: #e06c75; }
+      .cyan { fill: #56b6c2; }
+      .blue { fill: #61afef; }
+      .magenta { fill: #c678dd; }
+      .bold { font-weight: 700; }
+    </style>
+  </defs>
+
+  <!-- terminal frame -->
+  <rect class="bg" width="980" height="160" rx="8" />
+  <rect class="chrome" width="980" height="28" rx="8" />
+  <rect class="chrome" x="0" y="20" width="980" height="8" />
+  <circle class="dot-r" cx="16" cy="14" r="6" />
+  <circle class="dot-y" cx="36" cy="14" r="6" />
+  <circle class="dot-g" cx="56" cy="14" r="6" />
+  <text x="490" y="18" class="dim" font-size="11" text-anchor="middle">~/dev/n8n-builder — claude</text>
+
+  <!-- LINE 1 -->
+  <text x="14" y="56">
+    <tspan class="fg bold">Claude Opus 4.7 (1M context)</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">👤 </tspan>
+    <tspan class="magenta">you@example.com</tspan>
+    <tspan class="dim"> (Sub · Max 20x)</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">🧠 </tspan>
+    <tspan class="green">████░░░░░░</tspan>
+    <tspan class="fg"> 42%</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">💰 $0.457 (6m · $4.57/hr)</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">⏱ 5h: </tspan>
+    <tspan class="green">35%</tspan>
+    <tspan class="fg">→2h0m</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">📅 7d: </tspan>
+    <tspan class="green">12%</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">🕐 14:32:01</tspan>
+  </text>
+
+  <!-- LINE 2 -->
+  <text x="14" y="86">
+    <tspan class="fg">📁 n8n-builder</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">🔡 in:1.2K out:480 cache♻:7K </tspan>
+    <tspan class="green">+12</tspan>
+    <tspan class="fg">/</tspan>
+    <tspan class="red">-3</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">⎇ </tspan>
+    <tspan class="cyan">main</tspan>
+    <tspan class="green"> ↑2</tspan>
+    <tspan class="yellow"> ~3</tspan>
+    <tspan class="dim"> ?1</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">📦 Stash: 1</tspan>
+  </text>
+
+  <!-- LINE 3 -->
+  <text x="14" y="116">
+    <tspan class="yellow">▶ acceptEdits</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="cyan">🎨 Learning</tspan>
+    <tspan class="dim"> │ </tspan>
+    <tspan class="fg">🔋 76%</tspan>
+    <tspan class="dim"> │ ⚙ 63b119d Add account label and burn rate</tspan>
+  </text>
+
+  <!-- prompt -->
+  <text x="14" y="146">
+    <tspan class="green">❯</tspan>
+    <tspan class="fg"> </tspan>
+    <tspan class="dim">_</tspan>
+  </text>
+</svg>
