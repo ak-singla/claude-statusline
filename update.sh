@@ -32,10 +32,17 @@ else
   info "Updated $(git rev-parse --short "$OLD_HEAD") → $(git rev-parse --short "$NEW_HEAD")"
 fi
 
-mkdir -p "$TARGET_DIR"
-cp "${SCRIPT_DIR}/statusline.sh" "$TARGET_SCRIPT"
-chmod +x "$TARGET_SCRIPT"
-info "Refreshed $TARGET_SCRIPT"
+# Delegate to install.sh so the wrapper (Windows), settings.json command,
+# and any future generated artifacts stay in sync with the script.
+if [ -f "${SCRIPT_DIR}/install.sh" ]; then
+  info "Re-running installer to refresh script + settings..."
+  bash "${SCRIPT_DIR}/install.sh"
+else
+  mkdir -p "$TARGET_DIR"
+  cp "${SCRIPT_DIR}/statusline.sh" "$TARGET_SCRIPT"
+  chmod +x "$TARGET_SCRIPT"
+  info "Refreshed $TARGET_SCRIPT"
+fi
 
 VERSION=$(cat "${SCRIPT_DIR}/VERSION" 2>/dev/null || echo "")
 if [ -n "$VERSION" ]; then

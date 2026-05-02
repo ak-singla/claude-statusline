@@ -8,6 +8,7 @@ set -euo pipefail
 
 TARGET_DIR="${HOME}/.claude"
 TARGET_SCRIPT="${TARGET_DIR}/statusline.sh"
+TARGET_WRAPPER="${TARGET_DIR}/statusline.cmd"
 SETTINGS="${TARGET_DIR}/settings.json"
 
 green() { printf '\033[32m%s\033[0m' "$*"; }
@@ -28,6 +29,11 @@ fi
 if [ -f "$TARGET_SCRIPT" ]; then
   rm "$TARGET_SCRIPT"
   info "Deleted $TARGET_SCRIPT"
+fi
+
+if [ -f "$TARGET_WRAPPER" ]; then
+  rm "$TARGET_WRAPPER"
+  info "Deleted $TARGET_WRAPPER"
 fi
 
 info "$(green 'Uninstalled.') The repo clone is still on disk — remove it with: rm -rf $(cd "$(dirname "$0")" && pwd)"

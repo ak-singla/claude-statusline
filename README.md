@@ -30,18 +30,32 @@ This status line answers all of those, on every prompt, without you having to as
 
 ## Quick install
 
+### macOS / Linux / Windows Git Bash
+
 ```bash
 git clone https://github.com/ak-singla/claude-statusline ~/.claude-statusline
 bash ~/.claude-statusline/install.sh
 ```
 
-The installer will:
+> ⚠️ **Run this in a shell that expands `~`** (bash / zsh / Git Bash). PowerShell and `cmd.exe` do **not** expand `~`, so running the same line there will create a literal `~` folder (`C:\Users\you\~\.claude-statusline\`). If you're on Windows, either open Git Bash *or* use the PowerShell installer below.
 
-1. Detect your OS (macOS / Linux / Windows Git Bash).
+### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/ak-singla/claude-statusline "$env:USERPROFILE\.claude-statusline"
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude-statusline\install.ps1"
+```
+
+The PowerShell installer is a 1:1 equivalent of `install.sh` — it uses absolute Windows paths (no `~` expansion required) and writes a `bash "C:/Users/you/.claude/statusline.sh"` command into `settings.json`. You still need Git for Windows installed, since the statusline itself is bash. `jq` is auto-installed via Chocolatey, Scoop, or winget if missing.
+
+### What the installer does
+
+1. Detect your OS (macOS / Linux / Windows Git Bash / Windows PowerShell).
 2. Install `jq` if missing — via Homebrew, apt, dnf, yum, pacman, zypper, apk, Chocolatey, Scoop, or winget (auto-detected).
 3. Copy the script to `~/.claude/statusline.sh`.
-4. Patch `~/.claude/settings.json` with the `statusLine` block, **preserving every other setting you have**.
-5. Back up anything it overwrites.
+4. **Windows only:** also write a `~/.claude/statusline.cmd` wrapper that invokes Git Bash's absolute `bash.exe` with the statusline. This is what `settings.json` actually points to — it shields you from `bash` resolving to `C:\Windows\System32\bash.exe` (the WSL launcher) and from path-with-spaces quoting hazards in Claude Code's command spawn.
+5. Patch `~/.claude/settings.json` with the `statusLine` block, **preserving every other setting you have**.
+6. Back up anything it overwrites.
 
 Send a new message in Claude Code — your status line is live.
 
@@ -52,7 +66,11 @@ Send a new message in Claude Code — your status line is live.
 When a new version ships, run:
 
 ```bash
+# macOS / Linux / Git Bash
 bash ~/.claude-statusline/update.sh
+
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude-statusline\update.ps1"
 ```
 
 It fast-forwards the repo and refreshes `~/.claude/statusline.sh`. No `settings.json` changes, no backup churn.
@@ -62,7 +80,11 @@ It fast-forwards the repo and refreshes `~/.claude/statusline.sh`. No `settings.
 ## Uninstall
 
 ```bash
+# macOS / Linux / Git Bash
 bash ~/.claude-statusline/uninstall.sh
+
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude-statusline\uninstall.ps1"
 ```
 
 Removes the `statusLine` block from `settings.json` (leaving everything else untouched) and deletes the script. Backups are kept. The repo clone stays on disk in case you change your mind.
@@ -141,8 +163,9 @@ The script does **not** require Python, Node, curl, or anything else. It's pure 
 | **macOS** | ✅ Full | Battery via `pmset` (negligible cost — reads cached IOKit state) |
 | **Linux** | ✅ Full | Everything except battery |
 | **Windows (Git Bash / MSYS2)** | ✅ Full | Auto-normalizes `D:/foo` and `D:\foo` paths to `/d/foo` for `git -C`. Battery skipped |
+| **Windows (PowerShell installer)** | ✅ Full | Use `install.ps1` to set up paths and `settings.json` natively. The runtime statusline is still bash, so Git for Windows must be installed |
 
-WSL works as Linux. Native Windows PowerShell is **not** supported (the script is bash).
+WSL works as Linux. The runtime script (`statusline.sh`) is bash — `install.ps1` only handles install/uninstall/update on Windows so you don't get bitten by `~`-expansion in PowerShell.
 
 ---
 

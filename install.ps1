@@ -1,0 +1,163 @@
+# Installer for claude-statusline (Windows / PowerShell native)
+# Usage:  powershell -ExecutionPolicy Bypass -File .\install.ps1
+#    or:  pwsh -File .\install.ps1
+#
+# This is the Windows-native counterpart to install.sh. It avoids the `~`
+# expansion pitfall (PowerShell and cmd.exe do NOT expand `~`, so commands
+# like `git clone ... ~/.claude-statusline` create a literal `~` folder).
+#
+# The statusline itself is still bash, so Git Bash (which ships `bash` and
+# `sh`) must be installed for Claude Code to actually run it. The
+# generated settings.json uses an absolute Windows path so no shell-level
+# `~` expansion is required at runtime.
+
+[CmdletBinding()]
+param()
+
+$ErrorActionPreference = 'Stop'
+
+$ScriptDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
+$SourceScript  = Join-Path $ScriptDir 'statusline.sh'
+$TargetDir     = Join-Path $env:USERPROFILE '.claude'
+$TargetScript  = Join-Path $TargetDir 'statusline.sh'
+$TargetWrapper = Join-Path $TargetDir 'statusline.cmd'
+$Settings      = Join-Path $TargetDir 'settings.json'
+
+function Write-Info($msg)  { Write-Host "-> $msg" -ForegroundColor Green }
+function Write-Warn2($msg) { Write-Host "!  $msg" -ForegroundColor Yellow }
+function Write-Fail($msg)  { Write-Host "X  $msg" -ForegroundColor Red; exit 1 }
+
+# Convert a Windows path to a forward-slash form bash understands.
+# C:\Users\admin\.claude\statusline.sh -> C:/Users/admin/.claude/statusline.sh
+function Convert-ToBashPath($winPath) {
+    return ($winPath -replace '\\', '/')
+}
+
+if (-not (Test-Path $SourceScript)) {
+    Write-Fail "Source script not found: $SourceScript. Run this from inside the cloned repo."
+}
+
+Write-Info "Detected OS: windows (PowerShell)"
+
+# --- Find Git Bash (statusline.sh needs MSYS bash, not WSL bash) ---
+# `Get-Command bash` on Windows often returns C:\Windows\System32\bash.exe,
+# which is the WSL launcher. WSL bash sees a different filesystem and
+# silently fails on `C:/...` paths, so we prefer Git Bash's bash.exe by
+# its standard install path and only fall back to PATH lookup.
+$gitBashCandidates = @(
+    'C:\Program Files\Git\bin\bash.exe',
+    'C:\Program Files\Git\usr\bin\bash.exe',
+    'C:\Program Files (x86)\Git\bin\bash.exe',
+    "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe"
+)
+$BashExe = $null
+foreach ($c in $gitBashCandidates) {
+    if (Test-Path $c) { $BashExe = $c; break }
+}
+if (-not $BashExe) {
+    $bashCmd = Get-Command bash -ErrorAction SilentlyContinue
+    if ($bashCmd -and ($bashCmd.Source -notmatch 'System32\\bash\.exe$')) {
+        $BashExe = $bashCmd.Source
+    }
+}
+if (-not $BashExe) {
+    Write-Fail "Git Bash not found. Install Git for Windows (https://git-scm.com/download/win) -- it provides the MSYS bash the statusline needs. (System32\bash.exe is the WSL launcher and won't work for this script.)"
+}
+Write-Info "Using bash: $BashExe"
+
+# --- Ensure jq is installed ---
+$jqCmd = Get-Command jq -ErrorAction SilentlyContinue
+if ($jqCmd) {
+    $jqVer = (& jq --version) 2>&1
+    Write-Info "jq already installed: $jqVer"
+} else {
+    Write-Warn2 "jq not found - attempting install..."
+    if (Get-Command choco -ErrorAction SilentlyContinue) {
+        choco install -y jq
+    } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        scoop install jq
+    } elseif (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget install --id stedolan.jq -e --accept-source-agreements --accept-package-agreements
+    } else {
+        Write-Fail "No package manager found (choco / scoop / winget). Install one, or download jq from https://jqlang.org/download and put jq.exe in PATH, then re-run."
+    }
+    if (-not (Get-Command jq -ErrorAction SilentlyContinue)) {
+        Write-Fail "jq install failed. Install it manually and re-run."
+    }
+    Write-Info "jq installed: $((& jq --version) 2>&1)"
+}
+
+# --- Ensure ~/.claude exists ---
+if (-not (Test-Path $TargetDir)) {
+    New-Item -ItemType Directory -Path $TargetDir | Out-Null
+}
+
+# --- Backup existing statusline if present ---
+if (Test-Path $TargetScript) {
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $bak = "$TargetScript.bak.$stamp"
+    Copy-Item $TargetScript $bak
+    Write-Info "Backed up existing script -> $bak"
+}
+
+# --- Copy script ---
+Copy-Item $SourceScript $TargetScript -Force
+Write-Info "Installed script -> $TargetScript"
+
+# --- Write a .cmd wrapper next to the .sh ---
+# Claude Code spawns the statusLine command through cmd.exe on Windows.
+# Path-with-spaces (`"C:\Program Files\Git\bin\bash.exe"`) creates quoting
+# hazards depending on how the spawn is wrapped, and bare `bash` resolves
+# to System32\bash.exe (WSL) on systems where Git Bash isn't on the
+# global PATH. A tiny wrapper .cmd in ~/.claude (no spaces in the path)
+# sidesteps both issues -- the settings.json command becomes a plain
+# unambiguous path with no quoting.
+$wrapperLines = @(
+    '@echo off',
+    'rem Auto-generated by claude-statusline install.ps1 -- do not edit by hand.',
+    'rem Re-run install.ps1 after upgrading Git for Windows to refresh the bash path.',
+    ('"' + $BashExe + '" "' + (Convert-ToBashPath $TargetScript) + '"')
+)
+$wrapperLines -join "`r`n" | Set-Content -Path $TargetWrapper -Encoding ascii
+Write-Info "Wrote wrapper -> $TargetWrapper"
+
+# --- Compose settings.json command (absolute path to wrapper, no spaces) ---
+$Command = (Convert-ToBashPath $TargetWrapper)
+
+# --- Patch settings.json (preserve existing keys) ---
+if (Test-Path $Settings) {
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    Copy-Item $Settings "$Settings.bak.$stamp"
+
+    $json = Get-Content -Raw -Path $Settings | ConvertFrom-Json
+    if ($null -eq $json) { $json = New-Object PSObject }
+
+    $statusLine = [PSCustomObject]@{
+        type    = 'command'
+        command = $Command
+        padding = 0
+    }
+    if ($json.PSObject.Properties.Name -contains 'statusLine') {
+        $json.statusLine = $statusLine
+    } else {
+        $json | Add-Member -MemberType NoteProperty -Name statusLine -Value $statusLine
+    }
+
+    ($json | ConvertTo-Json -Depth 32) | Set-Content -Path $Settings -Encoding utf8
+    Write-Info "Patched $Settings (existing settings preserved)"
+} else {
+    $obj = [PSCustomObject]@{
+        statusLine = [PSCustomObject]@{
+            type    = 'command'
+            command = $Command
+            padding = 0
+        }
+    }
+    ($obj | ConvertTo-Json -Depth 32) | Set-Content -Path $Settings -Encoding utf8
+    Write-Info "Created $Settings"
+}
+
+Write-Host ''
+Write-Info 'Installed. Send any new message in Claude Code to see the new status line.'
+Write-Host ('  Update later with:    powershell -ExecutionPolicy Bypass -File "' + (Join-Path $ScriptDir 'update.ps1') + '"')
+Write-Host ('  Uninstall with:       powershell -ExecutionPolicy Bypass -File "' + (Join-Path $ScriptDir 'uninstall.ps1') + '"')
