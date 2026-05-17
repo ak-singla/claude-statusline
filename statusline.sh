@@ -115,6 +115,9 @@ CTX_BAR=$(build_bar "$CTX_PCT")
 # ── Color by threshold ───────────────────────────────────
 color_by_pct() {
   local pct=$1
+  case "$pct" in
+    ''|*[!0-9]*) echo "$GREEN"; return ;;
+  esac
   if   [ "$pct" -lt 50 ]; then echo "$GREEN"
   elif [ "$pct" -lt 80 ]; then echo "$YELLOW"
   else                         echo "$RED"
@@ -162,12 +165,14 @@ CURRENT_TIME=$(date "+%H:%M:%S")
 # ── Cache total (read + write) ───────────────────────────
 CACHE_TOT=$(( CACHE_R + CACHE_W ))
 
-# ── Battery (macOS only — pmset reads cached IOKit state, ~free) ─
+# ── Battery (macOS laptops only — skip desktops/servers that have no battery) ─
 BAT_STR=""
 if [ "$IS_MAC" = "1" ] && command -v pmset >/dev/null 2>&1; then
   BAT_RAW=$(pmset -g batt 2>/dev/null)
+  # Only proceed when an internal battery is physically present
+  echo "$BAT_RAW" | grep -q "InternalBattery" || BAT_RAW=""
   BAT_PCT=$(echo "$BAT_RAW" | grep -Eo '[0-9]+%' | head -1 | tr -d '%')
-  BAT_STATE=$(echo "$BAT_RAW" | grep -Eo '(charging|discharging|charged|AC attached|finishing charge|not charging)' | head -1)
+  BAT_STATE=$(echo "$BAT_RAW" | grep -Eo '(not charging|finishing charge|AC attached|discharging|charging|charged)' | head -1)
   if [ -n "$BAT_PCT" ]; then
     case "$BAT_STATE" in
       charging|charged|"AC attached"|"finishing charge") BAT_ICON="🔌" ;;
@@ -218,7 +223,7 @@ fi
 
 # ── Lines changed (from cost object) ─────────────────────
 LINES_STR=""
-if [ "$LINES_ADD" -gt 0 ] || [ "$LINES_DEL" -gt 0 ]; then
+if [ "$LINES_ADD" -gt 0 ] 2>/dev/null || [ "$LINES_DEL" -gt 0 ] 2>/dev/null; then
   LINES_STR=" ${GREEN}+${LINES_ADD}${RESET}/${RED}-${LINES_DEL}${RESET}"
 fi
 
@@ -257,3 +262,4 @@ LINE3=""
 [ -n "$BAT_STR" ]     && LINE3="${LINE3:+${LINE3} │ }${BAT_STR}"
 [ -n "$LAST_COMMIT" ] && LINE3="${LINE3:+${LINE3} │ }${DIM}⚙ ${LAST_COMMIT}${RESET}"
 [ -n "$LINE3" ] && printf "%s\n" "$LINE3"
+exit 0
