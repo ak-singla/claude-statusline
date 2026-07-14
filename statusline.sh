@@ -255,9 +255,28 @@ printf "%s" "$LINES_STR"
 [ -n "$STASH_STR" ] && printf " │ %s" "$STASH_STR"
 printf "\n"
 
+# ── caveman mode badge (integrated; reads ~/.claude/.caveman-active) ──
+CAVE_STR=""
+CAVE_FLAG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.caveman-active"
+if [ -f "$CAVE_FLAG" ] && [ ! -L "$CAVE_FLAG" ]; then
+  CAVE_MODE=$(head -c 64 "$CAVE_FLAG" 2>/dev/null | tr -d '\n\r' | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
+  case "$CAVE_MODE" in
+    lite|full|ultra|wenyan-lite|wenyan|wenyan-full|wenyan-ultra|commit|review|compress)
+      CAVE_SUFFIX=$(printf '%s' "$CAVE_MODE" | tr '[:lower:]' '[:upper:]')
+      CAVE_STR=$'\033[38;5;172m'"⛏ CAVEMAN:${CAVE_SUFFIX}"$'\033[0m'
+      CAVE_SAV_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.caveman-statusline-suffix"
+      if [ "${CAVEMAN_STATUSLINE_SAVINGS:-1}" != "0" ] && [ -f "$CAVE_SAV_FILE" ] && [ ! -L "$CAVE_SAV_FILE" ]; then
+        CAVE_SAV=$(head -c 64 "$CAVE_SAV_FILE" 2>/dev/null | tr -d '\000-\037')
+        [ -n "$CAVE_SAV" ] && CAVE_STR="${CAVE_STR} "$'\033[38;5;172m'"${CAVE_SAV}"$'\033[0m'
+      fi
+      ;;
+  esac
+fi
+
 # ── Line 3: Mode + output style + battery + last commit ──
 LINE3=""
-[ -n "$PERM_STR" ]    && LINE3="${PERM_STR}"
+[ -n "$CAVE_STR" ]    && LINE3="${CAVE_STR}"
+[ -n "$PERM_STR" ]    && LINE3="${LINE3:+${LINE3} │ }${PERM_STR}"
 [ -n "$OUT_STR" ]     && LINE3="${LINE3:+${LINE3} │ }${OUT_STR}"
 [ -n "$BAT_STR" ]     && LINE3="${LINE3:+${LINE3} │ }${BAT_STR}"
 [ -n "$LAST_COMMIT" ] && LINE3="${LINE3:+${LINE3} │ }${DIM}⚙ ${LAST_COMMIT}${RESET}"
