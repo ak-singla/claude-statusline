@@ -38,6 +38,15 @@ RL7D_PCT=$(echo "$input"   | jq -r '.rate_limits.seven_day.used_percentage // 0'
 CWD=$(echo "$input"        | jq -r '.workspace.current_dir // "."')
 PERM_MODE=$(echo "$input"  | jq -r '.permission_mode // .permissionMode // ""')
 OUT_STYLE=$(echo "$input"  | jq -r '.output_style.name // .outputStyle.name // .outputStyle // ""')
+SESS_NAME=$(echo "$input"  | jq -r '.session_name // empty' | tr -d '\000-\037')
+SESS_ID=$(echo "$input"    | jq -r '.session_id // empty' | cut -c1-8)
+# Name other sessions use to message this one (e.g. re-dash-61). Claude Code keeps it in
+# ~/.claude/sessions/<pid>.json next to the sessionId; the status line input does not carry it.
+PEER_NAME=""
+SESS_FULL=$(echo "$input"  | jq -r '.session_id // empty')
+if [ -n "$SESS_FULL" ]; then
+  PEER_NAME=$(jq -rs --arg s "$SESS_FULL" '[.[] | select(.sessionId == $s)] | sort_by((.updatedAt | tonumber? // 0)) | last | .name // empty' "$HOME"/.claude/sessions/*.json 2>/dev/null | tr -d '\000-\037')
+fi
 
 # ── Normalize Windows path (D:/foo or D:\foo → /d/foo) ───
 case "$CWD" in
@@ -231,6 +240,16 @@ fi
 FOLDER="${CWD##*/}"
 
 # ── Line 1: Session info ─────────────────────────────────
+# Messaging name (re-dash-61) + session title (/rename, --name or AI title); short session id only when neither exists.
+if [ -n "$PEER_NAME" ]; then
+  printf "🏷 ${BOLD}${YELLOW}%s${RESET} │ " "$PEER_NAME"
+fi
+if [ -n "$SESS_NAME" ]; then
+  [ -z "$PEER_NAME" ] && printf "🏷 "
+  printf "${BOLD}${CYAN}%s${RESET} │ " "$SESS_NAME"
+elif [ -z "$PEER_NAME" ] && [ -n "$SESS_ID" ]; then
+  printf "🏷 ${DIM}%s${RESET} │ " "$SESS_ID"
+fi
 printf "${BOLD}%s${RESET}" "$MODEL"
 [ -n "$ACCT_STR" ] && printf " │ %s" "$ACCT_STR"
 printf " │ 🧠 ${CTX_COLOR}%s${RESET} %s%%" "$CTX_BAR" "$CTX_PCT"
